@@ -1,0 +1,12 @@
+{
+    "host": "smtp.example.com",
+    "username": "[EMAIL_ADDRESS]",
+    "password": "[PASSWORD]",
+    "port": 465,
+    "encryption": "ssl",
+    "from_email": "[EMAIL_ADDRESS]",
+    "from_name": "B.M Shifat",
+    "hourly_limit": 25,
+    "timezone": "Asia\/Dhaka",
+    "_secret": "bms_mailer_2025"
+}

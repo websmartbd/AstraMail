@@ -1,0 +1,461 @@
+let currentLogData = [];
+let pollTimer = null;
+let recipientMode = 'all';
+let scheduleMode = 'now';
+
+let modalResolve = null;
+let savedSelection = null;
+
+function saveSelection() {
+  const sel = window.getSelection();
+  if (sel.getRangeAt && sel.rangeCount) {
+    savedSelection = sel.getRangeAt(0);
+  }
+}
+
+function restoreSelection() {
+  if (savedSelection) {
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedSelection);
+  }
+}
+
+function esc(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function showModal(title, body, isConfirm = false, isPrompt = false, defaultValue = '') {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('customModal');
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalBody').innerHTML = body;
+    
+    const inputWrap = document.getElementById('modalInputWrap');
+    const input = document.getElementById('modalInput');
+    inputWrap.style.display = isPrompt ? 'block' : 'none';
+    if(isPrompt) input.value = defaultValue;
+
+    const btnCancel = document.getElementById('modalBtnCancel');
+    btnCancel.style.display = (isConfirm || isPrompt) ? 'block' : 'none';
+    
+    overlay.classList.add('open');
+    modalResolve = resolve;
+
+    const close = (val) => {
+      overlay.classList.remove('open');
+      setTimeout(() => resolve(val), 300);
+    };
+
+    document.getElementById('modalBtnOk').onclick = () => close(isPrompt ? input.value : true);
+    btnCancel.onclick = () => close(null);
+  });
+}
+
+// Global alert/confirm overrides for convenience
+window.niceAlert = (title, msg) => showModal(title, msg);
+window.niceConfirm = (title, msg) => showModal(title, msg, true);
+window.nicePrompt = (title, msg, def) => showModal(title, msg, false, true, def);
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+
+function setRecipient(mode) {
+  recipientMode = mode;
+  document.getElementById('btnAll').classList.toggle('active', mode === 'all');
+  document.getElementById('btnOne').classList.toggle('active', mode === 'one');
+  document.getElementById('specificField').style.display = mode === 'one' ? 'block' : 'none';
+}
+
+function setScheduleMode(mode) {
+  scheduleMode = mode;
+  document.getElementById('btnNow').classList.toggle('active', mode === 'now');
+  document.getElementById('btnLater').classList.toggle('active', mode === 'later');
+  document.getElementById('schedulePicker').style.display = mode === 'later' ? 'block' : 'none';
+}
+
+function switchEditor(mode) {
+  const visual = document.getElementById('editorVisual');
+  const text = document.getElementById('body');
+  const toolbar = document.getElementById('wpToolbar');
+
+  document.getElementById('tabVisual').classList.toggle('active', mode === 'visual');
+  document.getElementById('tabText').classList.toggle('active', mode === 'text');
+  
+  if (mode === 'visual') {
+    visual.innerHTML = text.value;
+    visual.style.display = 'block';
+    toolbar.style.display = 'flex';
+    text.style.display = 'none';
+    visual.focus();
+  } else {
+    text.value = visual.innerHTML;
+    visual.style.display = 'none';
+    toolbar.style.display = 'none';
+    text.style.display = 'block';
+    text.focus();
+  }
+}
+
+async function exec(command, value = null) {
+  if (command === 'createLink' && value === null) {
+    saveSelection();
+    
+    // Try to get existing URL if selection is inside a link
+    let existingUrl = 'https://';
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0) {
+      const container = sel.getRangeAt(0).startContainer;
+      const parentLink = container.parentElement.closest('a');
+      if (parentLink) existingUrl = parentLink.getAttribute('href');
+    }
+
+    value = await nicePrompt('Insert/Edit Link', 'Enter the full URL:', existingUrl);
+    restoreSelection();
+    if (!value) return;
+  }
+  document.getElementById('editorVisual').focus();
+  document.execCommand(command, false, value);
+  syncToText();
+  updateToolbarState();
+}
+
+function updateToolbarState() {
+  const tools = {
+    'bold': 'toolBold',
+    'italic': 'toolItalic',
+    'underline': 'toolUnderline'
+  };
+  for (let cmd in tools) {
+    const active = document.queryCommandState(cmd);
+    if(document.getElementById(tools[cmd])) {
+        document.getElementById(tools[cmd]).classList.toggle('active', active);
+    }
+  }
+}
+
+function syncToVisual() {
+  document.getElementById('editorVisual').innerHTML = document.getElementById('body').value;
+}
+
+function syncToText() {
+  document.getElementById('body').value = document.getElementById('editorVisual').innerHTML;
+}
+
+// Ensure paste is clean and state is updated
+document.addEventListener('DOMContentLoaded', () => {
+  const visual = document.getElementById('editorVisual');
+  if(visual) {
+    visual.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+      document.execCommand('insertText', false, text);
+    });
+
+    // Detect cursor position for toolbar state
+    ['keyup', 'click', 'mouseup'].forEach(ev => {
+        visual.addEventListener(ev, updateToolbarState);
+    });
+  }
+});
+
+function filterContacts() {
+  const query = document.getElementById('contactSearch').value.toLowerCase();
+  document.querySelectorAll('.contact-row').forEach(row => {
+    row.style.display = row.getAttribute('data-search').includes(query) ? 'flex' : 'none';
+  });
+}
+
+function updateSelectedTags() {
+  const container = document.getElementById('selectedTags');
+  const checkboxes = document.querySelectorAll('.contact-checkbox');
+  const checked = document.querySelectorAll('.contact-checkbox:checked');
+  
+  // Update row highlighting
+  checkboxes.forEach(cb => {
+    cb.closest('.contact-row').classList.toggle('selected', cb.checked);
+  });
+
+  if (checked.length === 0) {
+    container.innerHTML = '<span style="color:var(--text-muted); font-size:11px; font-style:italic;">No one selected yet...</span>';
+    document.getElementById('selectedCount').textContent = '0 Selected';
+    return;
+  }
+
+  container.innerHTML = Array.from(checked).map(cb => `
+    <div class="tag">
+      ${esc(cb.getAttribute('data-name'))}
+      <span class="tag-remove" onclick="removeTag('${esc(cb.value)}')">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </span>
+    </div>
+  `).join('');
+
+  document.getElementById('selectedCount').textContent = checked.length + ' Selected';
+}
+
+function removeTag(email) {
+  const cb = Array.from(document.querySelectorAll('.contact-checkbox')).find(c => c.value === email);
+  if (cb) {
+    cb.checked = false;
+    updateSelectedTags();
+  }
+}
+
+function clearAllSelection() {
+  document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = false);
+  updateSelectedTags();
+}
+
+async function sendEmails() {
+  const subject = document.getElementById('subject').value.trim();
+  const body    = document.getElementById('body').value.trim();
+  if (!subject || !body) return niceAlert('Oops!', 'Please enter a subject and message.');
+
+  let target = 'all';
+  if (recipientMode === 'one') {
+    const selected = Array.from(document.querySelectorAll('.contact-checkbox:checked')).map(cb => cb.value);
+    if (selected.length === 0) return niceAlert('Recipient Required', 'Please select at least one person.');
+    target = selected.join(',');
+  }
+
+  let schedule = '';
+  if (scheduleMode === 'later') {
+    schedule = document.getElementById('scheduled_at').value;
+    if (!schedule) return niceAlert('Time Required', 'Please select a date and time for scheduling.');
+  }
+
+  const total = target === 'all' ? TOTAL_CONTACTS : target.split(',').length;
+  const confirmMsg = schedule ? `Schedule this campaign for ${new Date(schedule).toLocaleString()}?` : `Ready to launch this campaign to ${total} contacts?`;
+  
+  if (!(await niceConfirm('Confirm Launch', confirmMsg))) return;
+
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'queue');
+  form.append('name', document.getElementById('campaign_name').value.trim() || subject);
+  form.append('subject', subject);
+  form.append('body', body);
+  form.append('target', target);
+  form.append('scheduled_at', schedule);
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Processing...';
+
+  try {
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.status === 'scheduled') {
+      niceAlert('Success', 'Campaign scheduled successfully!');
+      location.href = 'scheduled.php';
+    } else if (data.status === 'queued') {
+      startPolling();
+      // Smooth scroll to results
+      document.getElementById('resultsBox').scrollIntoView({ behavior: 'smooth' });
+    } else {
+      niceAlert('Error', data.message);
+      btn.disabled = false;
+      btn.textContent = '🚀 Launch Campaign Now';
+    }
+  } catch(e) { 
+    btn.disabled = false; 
+    btn.textContent = '🚀 Launch Campaign Now';
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 5000);
+  pollStatus();
+}
+
+async function pollStatus() {
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'status');
+  try {
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    renderStatus(data);
+  } catch(e) {}
+}
+
+function renderStatus(data) {
+  if (!data || data.status === 'idle') {
+    document.getElementById('activeDashboard').style.display = 'none';
+    return;
+  }
+  
+  const { status, subject, sent = 0, failed = 0, total = 0, offset = 0, sent_log = [], scheduled_at } = data;
+  
+  document.getElementById('activeDashboard').style.display = 'block';
+  document.getElementById('dashSubject').textContent = subject || 'No active campaign';
+  document.getElementById('dashStatus').textContent = 'Status: ' + status.toUpperCase();
+  document.getElementById('dashStatus').style.color = status === 'sending' ? 'var(--accent)' : status === 'scheduled' ? 'var(--text-muted)' : 'var(--success)';
+
+  if (['queued', 'sending', 'done', 'cancelled'].includes(status)) {
+    document.getElementById('dashProgressWrap').style.display = 'block';
+    document.getElementById('dashScheduleWrap').style.display = 'none';
+    
+    const pct = total > 0 ? Math.round((offset / total) * 100) : 0;
+    document.getElementById('dashBar').style.width = pct + '%';
+    document.getElementById('dashCount').textContent = offset + ' / ' + total;
+    document.getElementById('dashSent').textContent = sent;
+    document.getElementById('dashFail').textContent = failed;
+  } else if (status === 'scheduled') {
+    document.getElementById('dashProgressWrap').style.display = 'none';
+    document.getElementById('dashScheduleWrap').style.display = 'block';
+    document.getElementById('dashTime').textContent = new Date(scheduled_at * 1000).toLocaleString();
+  }
+
+  if (sent_log.length > 0) {
+    if(document.getElementById('resultsBox')) {
+        document.getElementById('resultsBox').style.display = 'block';
+        document.getElementById('resultRows').innerHTML = sent_log.slice().reverse().map(r => `
+            <div class="log-item">
+              <div class="status-dot" style="background:${r.status === 'sent' ? 'var(--success)' : 'var(--danger)'}"></div>
+              <div style="flex:1;"><b>${esc(r.name)}</b> <span style="color:var(--text-muted);">${esc(r.email)}</span></div>
+            </div>
+          `).join('');
+    }
+  }
+
+  if (status === 'done' || status === 'cancelled') {
+    clearInterval(pollTimer);
+    document.getElementById('sendBtn').disabled = false;
+    document.getElementById('sendBtn').textContent = '🚀 Launch Campaign';
+  }
+}
+
+async function resetCampaign() {
+    if (!(await niceConfirm('Reset Dashboard', 'This will hide the current status from the dashboard. The report will still be available in the Reports tab. Continue?'))) return;
+    const form = new FormData();
+    form.append('_token', 'bms_mailer_2025');
+    form.append('action', 'reset');
+    await fetch('send.php', { method: 'POST', body: form });
+    location.reload();
+}
+
+async function addContact() {
+  const name = document.getElementById('newContactName').value.trim();
+  const email = document.getElementById('newContactEmail').value.trim();
+  if (!name || !email) return;
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'add_contact');
+  form.append('name', name);
+  form.append('email', email);
+  const res = await fetch('send.php', { method: 'POST', body: form });
+  const data = await res.json();
+  if (data.status === 'success') location.reload();
+}
+
+async function editContact(index) {
+    const table = document.querySelector('#tab-contacts table');
+    const row = table.querySelectorAll('tbody tr')[index];
+    if (!row) return niceAlert('Error', 'Contact row not found.');
+
+    const oldName = row.cells[0].textContent;
+    const oldEmail = row.cells[1].textContent;
+    
+    // Custom Multi-Field Edit
+    const html = `
+        <div style="text-align:left;">
+            <div class="form-group">
+                <label>Name</label>
+                <input type="text" id="editName" value="${esc(oldName)}" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+                <label>Email</label>
+                <input type="email" id="editEmail" value="${esc(oldEmail)}" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+            </div>
+        </div>
+    `;
+
+    const confirmed = await niceConfirm('Update Contact', html);
+    if (!confirmed) return;
+
+    const newName = document.getElementById('editName').value.trim();
+    const newEmail = document.getElementById('editEmail').value.trim();
+
+    if (!newName || !newEmail) return niceAlert('Error', 'Both name and email are required.');
+
+    const form = new FormData();
+    form.append('_token', 'bms_mailer_2025');
+    form.append('action', 'edit_contact');
+    form.append('index', index);
+    form.append('name', newName);
+    form.append('email', newEmail);
+    
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.status === 'success') {
+        location.reload();
+    } else {
+        niceAlert('Error', data.message || 'Failed to update contact.');
+    }
+}
+
+async function deleteContact(index) {
+    if (!(await niceConfirm('Delete Contact', 'Are you sure you want to remove this contact?'))) return;
+    const form = new FormData();
+    form.append('_token', 'bms_mailer_2025');
+    form.append('action', 'delete_contact');
+    form.append('index', index);
+    
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.status === 'success') {
+        location.reload();
+    } else {
+        niceAlert('Error', data.message || 'Failed to delete contact.');
+    }
+}
+
+async function saveSettings() {
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'save_settings');
+  form.append('host', document.getElementById('smtp_host').value);
+  form.append('port', document.getElementById('smtp_port').value);
+  form.append('username', document.getElementById('smtp_username').value);
+  form.append('password', document.getElementById('smtp_password').value);
+  form.append('encryption', document.getElementById('smtp_encryption').value);
+  form.append('from_name', document.getElementById('from_name').value);
+  form.append('from_email', document.getElementById('from_email').value);
+  form.append('hourly_limit', document.getElementById('hourly_limit').value);
+  form.append('timezone', document.getElementById('timezone').value);
+  const res = await fetch('send.php', { method: 'POST', body: form });
+  const data = await res.json();
+  if (data.status === 'success') { alert('Settings Saved'); location.reload(); }
+}
+
+async function cancelCampaign() {
+  if (!confirm('Cancel?')) return;
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'cancel');
+  await fetch('send.php', { method: 'POST', body: form });
+  location.reload();
+}
+
+function initApp() {
+    const form = new FormData();
+    form.append('_token', 'bms_mailer_2025');
+    form.append('action', 'status');
+    fetch('send.php', { method: 'POST', body: form })
+    .then(res => res.json())
+    .then(data => {
+        if (data.status && ['queued', 'sending'].includes(data.status)) {
+            if(document.getElementById('resultsBox')) document.getElementById('resultsBox').style.display = 'block';
+            startPolling();
+        }
+    })
+    .catch(e => {});
+}
