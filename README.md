@@ -24,7 +24,7 @@ A robust, modern, and lightweight email marketing platform built for precision a
 1. **Upload**: Copy all files to your PHP 7.4+ web server.
 2. **Permissions**: Ensure the `storage/` directory and its subfolders are writable (`755` or `777`).
 3. **Configure**: 
-   - Login to the dashboard (Default: `admin123`).
+   - Login to the dashboard (Default: `1234567`).
    - Go to **Settings** and enter your SMTP credentials.
    - Set your **Local Timezone** and **Hourly Send Limit**.
 4. **Automation**: Set up a Cron Job to run every minute (or every hour) depending on your needs:
