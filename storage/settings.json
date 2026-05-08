@@ -1,12 +1,13 @@
 {
-    "host": "smtp.example.com",
-    "username": "[EMAIL_ADDRESS]",
-    "password": "[PASSWORD]",
+    "host": "smtp.gmail.com",
+    "username": "bmshifat0@gmail.com",
+    "password": "bpdupzwtwkuynkkv",
     "port": 465,
     "encryption": "ssl",
-    "from_email": "[EMAIL_ADDRESS]",
+    "from_email": "bmshifat0@gmail.com",
     "from_name": "B.M Shifat",
     "hourly_limit": 25,
     "timezone": "Asia\/Dhaka",
+    "app_url": "http:\/\/localhost\/",
     "_secret": "bms_mailer_2025"
 }

@@ -255,9 +255,7 @@ async function sendEmails() {
       niceAlert('Success', 'Campaign scheduled successfully!');
       location.href = 'scheduled.php';
     } else if (data.status === 'queued') {
-      startPolling();
-      // Smooth scroll to results
-      document.getElementById('resultsBox').scrollIntoView({ behavior: 'smooth' });
+      location.href = 'logs.php';
     } else {
       niceAlert('Error', data.message);
       btn.disabled = false;
@@ -283,21 +281,63 @@ async function pollStatus() {
     const res = await fetch('send.php', { method: 'POST', body: form });
     const data = await res.json();
     renderStatus(data);
+    
+    // Also fetch system log if we are on the logs page
+    if (document.getElementById('systemLogBox')) {
+        fetchSystemLog();
+    }
   } catch(e) {}
+}
+
+async function fetchSystemLog() {
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'get_system_log');
+  try {
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    const box = document.getElementById('systemLogBox');
+    if (data.status === 'success') {
+      box.textContent = data.log;
+      box.scrollTop = box.scrollHeight; // Auto scroll to bottom
+    }
+  } catch(e) {}
+}
+
+async function clearSystemLog() {
+  if (!(await niceConfirm('Clear System Log', 'Are you sure you want to empty the activity log?'))) return;
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'clear_system_log');
+  await fetch('send.php', { method: 'POST', body: form });
+  fetchSystemLog();
 }
 
 function renderStatus(data) {
   if (!data || data.status === 'idle') {
-    document.getElementById('activeDashboard').style.display = 'none';
+    if (document.getElementById('noActiveCampaign')) document.getElementById('noActiveCampaign').style.display = 'block';
+    if (document.getElementById('activeDashboard')) document.getElementById('activeDashboard').style.display = 'none';
+    if (document.getElementById('logCountInfo')) document.getElementById('logCountInfo').textContent = 'System Idle';
     return;
   }
+  
+  if (document.getElementById('noActiveCampaign')) document.getElementById('noActiveCampaign').style.display = 'none';
+  if (document.getElementById('activeDashboard')) document.getElementById('activeDashboard').style.display = 'block';
   
   const { status, subject, sent = 0, failed = 0, total = 0, offset = 0, sent_log = [], scheduled_at } = data;
   
   document.getElementById('activeDashboard').style.display = 'block';
-  document.getElementById('dashSubject').textContent = subject || 'No active campaign';
-  document.getElementById('dashStatus').textContent = 'Status: ' + status.toUpperCase();
-  document.getElementById('dashStatus').style.color = status === 'sending' ? 'var(--accent)' : status === 'scheduled' ? 'var(--text-muted)' : 'var(--success)';
+  if (document.getElementById('dashSubject')) document.getElementById('dashSubject').textContent = subject || 'No active campaign';
+  if (document.getElementById('dashStatus')) document.getElementById('dashStatus').textContent = status.toUpperCase();
+  if (document.getElementById('logCountInfo')) document.getElementById('logCountInfo').textContent = status.toUpperCase();
+  
+  // Update Global Stats if on logs.php
+  if (data.pending_count !== undefined && document.querySelector('[style*="color:var(--accent)"][style*="font-size:14px"]')) {
+      document.querySelector('[style*="color:var(--accent)"][style*="font-size:14px"]').textContent = data.pending_count;
+  }
+  if (data.total_delivered !== undefined && document.querySelector('[style*="color:#10b981"][style*="font-size:14px"]')) {
+      document.querySelector('[style*="color:#10b981"][style*="font-size:14px"]').textContent = data.total_delivered;
+  }
 
   if (['queued', 'sending', 'done', 'cancelled'].includes(status)) {
     document.getElementById('dashProgressWrap').style.display = 'block';
@@ -315,14 +355,45 @@ function renderStatus(data) {
   }
 
   if (sent_log.length > 0) {
-    if(document.getElementById('resultsBox')) {
-        document.getElementById('resultsBox').style.display = 'block';
-        document.getElementById('resultRows').innerHTML = sent_log.slice().reverse().map(r => `
-            <div class="log-item">
-              <div class="status-dot" style="background:${r.status === 'sent' ? 'var(--success)' : 'var(--danger)'}"></div>
-              <div style="flex:1;"><b>${esc(r.name)}</b> <span style="color:var(--text-muted);">${esc(r.email)}</span></div>
-            </div>
-          `).join('');
+    const box = document.getElementById('resultRows');
+    if(box) {
+        box.style.display = 'block';
+        const isGlobalTable = !!document.getElementById('globalLogBody');
+        
+        if (isGlobalTable) {
+            // Prepend new active logs to the global table
+            // For simplicity, we'll just show the last 20 active logs at the top
+            const activeLogsHtml = sent_log.slice(-20).reverse().map(r => `
+                <tr style="border-bottom:1px solid #f8fafc; background: #fdf2f200;">
+                    <td style="padding:10px 16px; width:40px;">
+                        <div style="width:8px; height:8px; border-radius:50%; background:${r.status === 'sent' ? '#10b981' : '#ef4444'};"></div>
+                    </td>
+                    <td style="padding:10px 0;">
+                        <div style="font-weight:700; color:#0f172a;">${esc(r.name)}</div>
+                        <div style="font-size:11px; color:#94a3b8;">${esc(r.email)}</div>
+                    </td>
+                    <td style="padding:10px 16px; text-align:right;">
+                        <div style="font-size:10px; font-weight:800; color:var(--accent); text-transform:uppercase;">ACTIVE</div>
+                        <div style="font-size:10px; color:#94a3b8;">Just now</div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            const tbody = document.getElementById('globalLogBody');
+            // If we want a true global log, we'd need to merge, but for now let's just update the top
+            // To keep it simple and responsive:
+            if (status === 'sending') {
+                // If sending, we show active logs. When done, the page reload will show the archived ones.
+                tbody.innerHTML = activeLogsHtml;
+            }
+        } else {
+            box.innerHTML = sent_log.slice().reverse().map(r => `
+                <div class="log-item">
+                  <div class="status-dot" style="background:${r.status === 'sent' ? 'var(--success)' : 'var(--danger)'}"></div>
+                  <div style="flex:1;"><b>${esc(r.name)}</b> <span style="color:var(--text-muted);">${esc(r.email)}</span></div>
+                </div>
+              `).join('');
+        }
     }
   }
 
@@ -431,9 +502,14 @@ async function saveSettings() {
   form.append('from_email', document.getElementById('from_email').value);
   form.append('hourly_limit', document.getElementById('hourly_limit').value);
   form.append('timezone', document.getElementById('timezone').value);
+  form.append('app_url', document.getElementById('app_url').value);
+  
   const res = await fetch('send.php', { method: 'POST', body: form });
   const data = await res.json();
-  if (data.status === 'success') { alert('Settings Saved'); location.reload(); }
+  if (data.status === 'success') { 
+    niceAlert('Success', 'Settings Saved Successfully');
+    setTimeout(() => location.reload(), 1500); 
+  }
 }
 
 async function cancelCampaign() {

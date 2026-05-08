@@ -18,7 +18,7 @@
 // Shared Constants
 const TOTAL_CONTACTS = <?= isset($total_contacts) ? $total_contacts : 0 ?>;
 </script>
-<script src="assets/app.js"></script>
+<script src="assets/app.js?v=<?= time() ?>"></script>
 <script>
 document.addEventListener('DOMContentLoaded', initApp);
 </script>

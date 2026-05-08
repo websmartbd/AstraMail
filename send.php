@@ -69,6 +69,7 @@ if ($action === 'save_settings') {
         'from_name'  => str_replace(["\r", "\n"], '', trim($_POST['from_name'] ?? '')),
         'hourly_limit' => (int)($_POST['hourly_limit'] ?? 25),
         'timezone'   => trim($_POST['timezone'] ?? 'UTC'),
+        'app_url'    => rtrim(trim($_POST['app_url'] ?? ''), '/') . '/',
         '_secret'    => $secret // Persist the secret
     ];
     file_put_contents($SETTINGS_FILE, json_encode($new_settings, JSON_PRETTY_PRINT));
@@ -114,6 +115,27 @@ if ($action === 'delete_contact') {
         exit;
     }
     echo json_encode(['status' => 'error']); exit;
+}
+
+// ── SYSTEM LOG ──────────────────────────────────────────────────────────────
+if ($action === 'get_system_log') {
+    $log_file = __DIR__ . '/cron.log';
+    if (!file_exists($log_file)) {
+        echo json_encode(['status' => 'success', 'log' => 'No activity recorded yet.']);
+        exit;
+    }
+    // Read last 100 lines
+    $lines = file($log_file);
+    $last_lines = array_slice($lines, -100);
+    echo json_encode(['status' => 'success', 'log' => implode('', $last_lines)]);
+    exit;
+}
+
+if ($action === 'clear_system_log') {
+    $log_file = __DIR__ . '/cron.log';
+    file_put_contents($log_file, "[" . date('Y-m-d H:i:s') . "] Log cleared by administrator.\n");
+    echo json_encode(['status' => 'success']);
+    exit;
 }
 
 // ── QUEUE (save campaign for cron to pick up) ─────────────────────────────────

@@ -260,3 +260,20 @@ textarea { min-height: 180px; }
 .modal-input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 20px; font-size: 14px; outline: none; transition: border-color 0.2s; }
 .modal-input:focus { border-color: var(--accent); }
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+
+/* ── Stats Badges (SaaS Premium) ── */
+.stat-pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.stat-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  border: 1px solid rgba(0,0,0,0.05);
+  line-height: 1;
+}
+.stat-pill.sent { background: #f0fdf4; color: #15803d; border-color: #dcfce7; }
+.stat-pill.open { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
+.stat-pill.click { background: #f5f3ff; color: #7c3aed; border-color: #ede9fe; }
+.stat-pill.fail { background: #fef2f2; color: #dc2626; border-color: #fee2e2; }
+
+tr:hover td { background-color: #fdfdfd; }
+td { transition: background 0.2s; }

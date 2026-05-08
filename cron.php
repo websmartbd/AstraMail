@@ -21,6 +21,13 @@ date_default_timezone_set($smtp_config['timezone'] ?? 'UTC');
 $HOURLY_LIMIT  = (int)($smtp_config['hourly_limit'] ?? 25);
 $DELAY_SECONDS = 10;
 $LOG_FILE      = __DIR__ . '/cron.log';
+// ── AUTO-CLEAN LOG (Weekly) ──────────────────────────────────────────────────
+$RESET_FILE = __DIR__ . '/storage/.log_reset';
+$last_reset = file_exists($RESET_FILE) ? (int)file_get_contents($RESET_FILE) : 0;
+if (time() - $last_reset > (7 * 24 * 60 * 60)) {
+    file_put_contents($LOG_FILE, "[" . date('Y-m-d H:i:s') . "] LOG CLEANUP: Automatic weekly reset.\n");
+    file_put_contents($RESET_FILE, time());
+}
 // ──────────────────────────────────────────────────────────────────────────────
 
 function clog($msg) {
@@ -140,6 +147,24 @@ foreach ($batch as $i => $contact) {
 
     $ps   = str_replace('{{name}}', $contact['name'], $subject);
     $pb   = str_replace('{{name}}', htmlspecialchars($contact['name']), $body_raw);
+    
+    // --- TRACKING INJECTION ---
+    $cid = $state['campaign_id'];
+    $app_url = $smtp_config['app_url'] ?? '';
+    if ($app_url) {
+        // 1. Open Tracking
+        $pixel = "<img src=\"{$app_url}track.php?type=open&cid={$cid}&e=" . urlencode($contact['email']) . "\" style=\"display:none;\" />";
+        $pb .= $pixel;
+        
+        // 2. Click Tracking
+        $pb = preg_replace_callback('/<a\s+[^>]*href=["\']([^"\']*)["\']/i', function($m) use ($app_url, $cid, $contact) {
+            $orig = $m[1];
+            if (strpos($orig, '#') === 0 || strpos($orig, 'mailto:') === 0 || strpos($orig, 'tel:') === 0 || empty($orig)) return $m[0];
+            $track_click = $app_url . "track.php?type=click&cid=$cid&e=" . urlencode($contact['email']) . "&url=" . urlencode(base64_encode($orig));
+            return str_replace($orig, $track_click, $m[0]);
+        }, $pb);
+    }
+
     $html = build_html_email($smtp_config['from_name'], $ps, $pb);
 
     // Single attempt only — no retry (avoid double-counting toward hourly limit)
