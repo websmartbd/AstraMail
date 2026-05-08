@@ -91,7 +91,10 @@ $total = count($email_list);
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
                     </button>
                   <?php endif; ?>
-                  <button onclick="editContact(<?= $index ?>)" title="Edit"
+                  <button onclick="editContact(this, <?= $index ?>)" 
+                    data-name="<?= htmlspecialchars($c['name']) ?>" 
+                    data-email="<?= htmlspecialchars($c['email']) ?>" 
+                    title="Edit"
                     style="background:none;border:1px solid #e2e8f0;padding:5px 8px;border-radius:6px;cursor:pointer;color:#475569;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                   </button>

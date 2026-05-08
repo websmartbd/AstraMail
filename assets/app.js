@@ -455,24 +455,20 @@ async function addContact() {
   if (data.status === 'success') location.reload();
 }
 
-async function editContact(index) {
-    const table = document.querySelector('#tab-contacts table');
-    const row = table.querySelectorAll('tbody tr')[index];
-    if (!row) return niceAlert('Error', 'Contact row not found.');
-
-    const oldName = row.cells[0].textContent;
-    const oldEmail = row.cells[1].textContent;
+async function editContact(el, index) {
+    const oldName = el.dataset.name;
+    const oldEmail = el.dataset.email;
     
     // Custom Multi-Field Edit
     const html = `
         <div style="text-align:left;">
-            <div class="form-group">
-                <label>Name</label>
-                <input type="text" id="editName" value="${esc(oldName)}" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+            <div class="form-group" style="margin-bottom:12px;">
+                <label style="font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; display:block;">Name</label>
+                <input type="text" id="editName" value="${esc(oldName)}" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; outline:none;">
             </div>
-            <div class="form-group" style="margin-top:12px;">
-                <label>Email</label>
-                <input type="email" id="editEmail" value="${esc(oldEmail)}" style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
+            <div class="form-group">
+                <label style="font-size:11px; font-weight:800; color:#94a3b8; text-transform:uppercase; margin-bottom:6px; display:block;">Email</label>
+                <input type="email" id="editEmail" value="${esc(oldEmail)}" style="width:100%; padding:10px; border:1px solid #e2e8f0; border-radius:8px; outline:none;">
             </div>
         </div>
     `;
