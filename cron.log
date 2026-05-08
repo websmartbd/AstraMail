@@ -1,0 +1,60 @@
+[2026-05-08 20:51:22] LOG CLEANUP: Automatic weekly reset.
+[2026-05-08 20:51:22] === Cron run started. Offset: 0 / 3. Sending up to 25 emails. ===
+[2026-05-08 20:51:29] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 20:51:44] ✓ Sent to bmshifat0@gmail.com (B.M Shifat)
+[2026-05-08 20:52:00] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 20:52:00] === Run complete. Sent: 3, Failed: 0, Progress: 3/3, Status: done ===
+[2026-05-08 16:59:46] [BOUNCE] Connecting to {fundme.bro.bd:993/imap/ssl}INBOX...
+[2026-05-08 16:59:49] [BOUNCE] No new bounce messages found.
+[2026-05-08 16:59:49] [BOUNCE] Bounce handling complete.
+[2026-05-08 20:59:49] === Cron run started. Offset: 0 / 3. Sending up to 25 emails. ===
+[2026-05-08 20:59:54] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 21:00:09] ✓ Sent to bmshifat0@gmail.com (B.M Shifat)
+[2026-05-08 21:00:25] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 21:00:25] === Run complete. Sent: 3, Failed: 0, Progress: 3/3, Status: done ===
+[2026-05-08 17:08:24] [BOUNCE] Connecting to {fundme.bro.bd:993/imap/ssl}INBOX...
+[2026-05-08 17:08:25] [BOUNCE] No new bounce messages found.
+[2026-05-08 17:08:25] [BOUNCE] Bounce handling complete.
+[2026-05-08 21:08:25] === Cron run started. Offset: 0 / 3. Sending up to 25 emails. ===
+[2026-05-08 21:08:31] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 21:08:46] ✓ Sent to bmshifat0@gmail.com (B.M Shifat)
+[2026-05-08 21:09:03] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 21:09:03] === Run complete. Sent: 3, Failed: 0, Progress: 3/3, Status: done ===
+[2026-05-08 17:12:10] [BOUNCE] Connecting to {fundme.bro.bd:993/imap/ssl}INBOX...
+[2026-05-08 17:12:11] [BOUNCE] No new bounce messages found.
+[2026-05-08 17:12:12] [BOUNCE] Bounce handling complete.
+[2026-05-08 21:12:12] === Cron run started. Offset: 0 / 4. Sending up to 25 emails. ===
+[2026-05-08 21:12:16] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 21:12:35] ✓ Sent to bmshifat0@gmail.com (B.M Shifat)
+[2026-05-08 21:12:52] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 21:13:09] ✓ Sent to bosunia8x8x8x@gmail.com (bosunia)
+[2026-05-08 21:13:09] === Run complete. Sent: 4, Failed: 0, Progress: 4/4, Status: done ===
+[2026-05-08 21:31:20] === Cron run started. Offset: 0 / 4. Sending up to 25 emails. ===
+[2026-05-08 21:31:25] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 21:31:41] ✓ Sent to bmshifat0@gmail.com (B.M Shifat)
+[2026-05-08 21:31:59] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 21:32:16] ✓ Sent to bosunia8x8x8x@gmail.com (bosunia)
+[2026-05-08 21:32:16] === Run complete. Sent: 4, Failed: 0, Progress: 4/4, Status: done ===
+[2026-05-08 21:32:16] [BOUNCE] Connecting to {fundme.bro.bd:993/imap/ssl}INBOX...
+[2026-05-08 21:32:19] [BOUNCE] Found 4 unread messages to scan.
+[2026-05-08 21:32:26] [BOUNCE] Discovered 4 unique bounced addresses.
+[2026-05-08 21:32:26] [BOUNCE] !!! Marked as BOUNCED: shifa11111111111111111111111111t12@gmail.com
+[2026-05-08 21:32:26] [BOUNCE] !!! Marked as BOUNCED: bmshifat0@gmail.com
+[2026-05-08 21:32:26] [BOUNCE] !!! Marked as BOUNCED: sumoankala@pkb.com
+[2026-05-08 21:32:26] [BOUNCE] !!! Marked as BOUNCED: bosunia8x8x8x@gmail.com
+[2026-05-08 21:32:26] [BOUNCE] Updated contacts.json with 4 new bounces.
+[2026-05-08 21:32:26] [BOUNCE] Bounce handling complete.
+[2026-05-08 21:36:08] === Cron run started. Offset: 0 / 4. Sending up to 25 emails. ===
+[2026-05-08 21:36:15] ✓ Sent to shifa11111111111111111111111111t12@gmail.com (shifat12)
+[2026-05-08 21:36:29] ✓ Sent to websmartbd@gmail.com (B.M Shifat)
+[2026-05-08 21:36:43] ✓ Sent to sumoankala@pkb.com (Kala)
+[2026-05-08 21:36:59] ✓ Sent to bosunia8x8x8x@gmail.com (bosunia)
+[2026-05-08 21:36:59] === Run complete. Sent: 4, Failed: 0, Progress: 4/4, Status: done ===
+[2026-05-08 21:36:59] [BOUNCE] Connecting to {fundme.bro.bd:993/imap/ssl}INBOX...
+[2026-05-08 21:37:01] [BOUNCE] Found 3 unread messages to scan.
+[2026-05-08 21:37:03] [BOUNCE] Discovered 3 unique bounced addresses.
+[2026-05-08 21:37:03] [BOUNCE] !!! Marked as BOUNCED: websmartbd@gmail.com
+[2026-05-08 21:37:03] [BOUNCE] !!! Marked as BOUNCED: sumoankala@pkb.com
+[2026-05-08 21:37:03] [BOUNCE] !!! Marked as BOUNCED: bosunia8x8x8x@gmail.com
+[2026-05-08 21:37:03] [BOUNCE] Updated contacts.json with 3 new bounces.
+[2026-05-08 21:37:03] [BOUNCE] Bounce handling complete.

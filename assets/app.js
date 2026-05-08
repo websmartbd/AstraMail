@@ -102,6 +102,32 @@ function switchEditor(mode) {
   }
 }
 
+async function syncBounces() {
+  const btn = document.getElementById('syncBtn');
+  const originalHtml = btn.innerHTML;
+  btn.innerHTML = 'Syncing...';
+  btn.disabled = true;
+
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'sync_bounces');
+
+  try {
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.status === 'success') {
+      window.location.reload();
+    } else {
+      alert('Sync failed. Please check IMAP settings.');
+      btn.innerHTML = originalHtml;
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.innerHTML = originalHtml;
+    btn.disabled = false;
+  }
+}
+
 async function exec(command, value = null) {
   if (command === 'createLink' && value === null) {
     saveSelection();
@@ -363,10 +389,12 @@ function renderStatus(data) {
         if (isGlobalTable) {
             // Prepend new active logs to the global table
             // For simplicity, we'll just show the last 20 active logs at the top
-            const activeLogsHtml = sent_log.slice(-20).reverse().map(r => `
+            const activeLogsHtml = sent_log.slice(-20).reverse().map(r => {
+                const currentStatus = (data.contact_status && data.contact_status[r.email]) || r.status;
+                return `
                 <tr style="border-bottom:1px solid #f8fafc; background: #fdf2f200;">
                     <td style="padding:10px 16px; width:40px;">
-                        <div style="width:8px; height:8px; border-radius:50%; background:${r.status === 'sent' ? '#10b981' : '#ef4444'};"></div>
+                        <div style="width:8px; height:8px; border-radius:50%; background:${currentStatus === 'sent' ? '#10b981' : '#ef4444'};"></div>
                     </td>
                     <td style="padding:10px 0;">
                         <div style="font-weight:700; color:#0f172a;">${esc(r.name)}</div>
@@ -377,7 +405,7 @@ function renderStatus(data) {
                         <div style="font-size:10px; color:#94a3b8;">Just now</div>
                     </td>
                 </tr>
-            `).join('');
+            `}).join('');
             
             const tbody = document.getElementById('globalLogBody');
             // If we want a true global log, we'd need to merge, but for now let's just update the top
@@ -473,6 +501,16 @@ async function editContact(index) {
     }
 }
 
+async function reactivateContact(index) {
+  const form = new FormData();
+  form.append('_token', 'bms_mailer_2025');
+  form.append('action', 'reactivate_contact');
+  form.append('index', index);
+
+  await fetch('send.php', { method: 'POST', body: form });
+  window.location.reload();
+}
+
 async function deleteContact(index) {
     if (!(await niceConfirm('Delete Contact', 'Are you sure you want to remove this contact?'))) return;
     const form = new FormData();
@@ -489,6 +527,18 @@ async function deleteContact(index) {
     }
 }
 
+function filterContacts() {
+    const input = document.getElementById('contactSearch');
+    if (!input) return;
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('tbody tr');
+
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
+
 async function saveSettings() {
   const form = new FormData();
   form.append('_token', 'bms_mailer_2025');
@@ -503,6 +553,12 @@ async function saveSettings() {
   form.append('hourly_limit', document.getElementById('hourly_limit').value);
   form.append('timezone', document.getElementById('timezone').value);
   form.append('app_url', document.getElementById('app_url').value);
+  
+  // IMAP
+  form.append('imap_host', document.getElementById('imap_host').value);
+  form.append('imap_port', document.getElementById('imap_port').value);
+  form.append('imap_username', document.getElementById('imap_username').value);
+  form.append('imap_password', document.getElementById('imap_password').value);
   
   const res = await fetch('send.php', { method: 'POST', body: form });
   const data = await res.json();

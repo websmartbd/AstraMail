@@ -5,9 +5,12 @@ require_once __DIR__ . '/core/header.php';
 
 <section id="tab-settings" class="tab-section active">
 
-  <div style="margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;">
-    <h1 style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#0f172a;">Settings</h1>
-    <p style="font-size:12px;color:#64748b;font-weight:500;">Configure your delivery engine and platform identity.</p>
+  <div style="margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:12px;display:flex;justify-content:space-between;align-items:flex-end;">
+    <div>
+      <h1 style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#0f172a;">Settings</h1>
+      <p style="font-size:12px;color:#64748b;font-weight:500;">Configure your delivery engine and platform identity.</p>
+    </div>
+    <a href="check.php" style="font-size:11px;font-weight:800;color:var(--accent);text-decoration:none;border:1px solid #e2e8f0;padding:6px 12px;border-radius:6px;background:#fff;">Run System Diagnostics</a>
   </div>
 
   <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:20px;align-items:start;">
@@ -44,6 +47,34 @@ require_once __DIR__ . '/core/header.php';
       <div class="form-group" style="margin-bottom:0;">
         <label>Password</label>
         <input type="password" id="smtp_password" style="padding:9px 12px;font-size:13px;" value="<?= htmlspecialchars($smtp_config['password']) ?>">
+      </div>
+    </div>
+    
+    <!-- Bounce Engine (IMAP) -->
+    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #f1f5f9;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <div style="font-size:13px;font-weight:800;">Bounce Engine (IMAP)</div>
+        </div>
+        <div style="font-size:9px;font-weight:800;color:#10b981;text-transform:uppercase;background:#f0fdf4;padding:2px 6px;border-radius:4px;">Auto-Scan</div>
+      </div>
+
+      <div class="form-group">
+        <label>IMAP Host</label>
+        <input type="text" id="imap_host" style="padding:9px 12px;font-size:13px;" value="<?= htmlspecialchars($smtp_config['imap_host'] ?? '') ?>" placeholder="mail.yourdomain.com">
+      </div>
+      <div class="form-group">
+        <label>IMAP Port</label>
+        <input type="number" id="imap_port" style="padding:9px 12px;font-size:13px;" value="<?= $smtp_config['imap_port'] ?? 993 ?>">
+      </div>
+      <div class="form-group">
+        <label>IMAP Username</label>
+        <input type="text" id="imap_username" style="padding:9px 12px;font-size:13px;" value="<?= htmlspecialchars($smtp_config['imap_username'] ?? '') ?>" placeholder="Same as SMTP usually">
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label>IMAP Password</label>
+        <input type="password" id="imap_password" style="padding:9px 12px;font-size:13px;" value="<?= htmlspecialchars($smtp_config['imap_password'] ?? '') ?>">
       </div>
     </div>
 

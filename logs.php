@@ -5,17 +5,25 @@ require_once __DIR__ . '/core/header.php';
 $scheduled_dir = __DIR__ . '/storage/scheduled';
 $archive_dir   = __DIR__ . '/storage/archive';
 $state_file    = __DIR__ . '/storage/campaignState.json';
+$contacts_file = __DIR__ . '/storage/contacts.json';
 
 // 1. Get Scheduled Count
 $scheduled_files = glob($scheduled_dir . '/campaign_*.json');
 $pending_count = count($scheduled_files);
 
-// 2. Get Active Campaign
+// 2. Load Contact Statuses (for dynamic dots)
+$email_list = file_exists($contacts_file) ? json_decode(file_get_contents($contacts_file), true) : [];
+$contact_status = [];
+foreach ($email_list as $c) {
+    $contact_status[$c['email']] = $c['status'] ?? 'active';
+}
+
+// 3. Get Active Campaign
 $active = file_exists($state_file) ? json_decode(file_get_contents($state_file), true) : null;
 $is_sending = $active && in_array($active['status'] ?? '', ['queued', 'sending']);
 if ($active && ($active['status'] ?? '') === 'scheduled') $pending_count++;
 
-// 3. Aggregate Global Stats (Simplified)
+// 4. Aggregate Global Stats (Simplified)
 $archived_files = glob($archive_dir . '/campaign_*.json');
 $total_delivered = 0;
 $global_log = [];
@@ -29,6 +37,10 @@ foreach ($archived_files as $f) {
         foreach (array_slice(array_reverse($logs), 0, 5) as $l) {
             $l['campaign'] = $d['campaign_name'] ?? $d['subject'];
             $l['time'] = $d['updated_at'] ?? '—';
+            // Override status with current status if bounced
+            $current = $contact_status[$l['email']] ?? 'active';
+            if ($current === 'bounced') $l['status'] = 'bounced';
+            
             $global_log[] = $l;
         }
     }

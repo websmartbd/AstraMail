@@ -1,67 +1,63 @@
-# AstraMail 🚀 — Professional Email Marketing Dashboard
+# 🚀 AstraMail: Advanced Email Marketing Engine
 
-AstraMail is a high-performance, self-hosted email marketing platform designed for speed, reliability, and beautiful analytics. Built with PHP 7.4+ and a modern, high-density SaaS interface.
-
----
-
-## ✨ Key Features
-
-### 🖥️ Modern SaaS Interface
-- **Responsive Dashboard**: Mobile-first design that feels like a native app on your phone.
-- **High-Density Data**: Optimized layouts to show more information with less scrolling.
-- **Glassmorphic Touches**: Subtle blurs, consistent iconography, and a premium aesthetic.
-
-### 🧙 4-Step Campaign Wizard
-- **Step 1: Campaign Identity**: Give your campaign a name.
-- **Step 2: Smart Composer**: Visual WYSIWYG editor with HTML toggle and toolbar.
-- **Step 3: Targeting**: Send to everyone or select specific contacts.
-- **Step 4: Scheduling**: Launch instantly or schedule for a specific date/time.
-
-### 🛰️ Real-Time Delivery Dashboard (`logs.php`)
-- **Global Delivery Log**: Watch every single email go out across all campaigns in one master feed.
-- **Active Monitor**: Live progress bars, sent/failed counters, and real-time status updates.
-- **Upcoming Queue**: Visual list of campaigns waiting to be sent.
-- **Engine Status**: Live view of the background delivery process (`cron.php`).
-
-### 📊 Advanced Analytics & Tracking
-- **Open Tracking**: Automatic injection of tracking pixels to record when emails are read.
-- **Click Tracking**: Every link in your email is automatically converted into a tracking link.
-- **Link Performance**: Detailed breakdown in reports showing exactly which links were most popular.
-- **Engagement Rates**: Automated calculation of Open and Click percentages.
-
-### ⚙️ Smart Delivery Engine
-- **Hourly Limits**: Protect your SMTP reputation by setting safe hourly sending limits.
-- **Persistence**: "Zero-Config" tracking—the system automatically senses your website URL.
-- **Flat-File Storage**: Lightning-fast performance using JSON storage (no database required).
+**AstraMail** is a professional-grade, high-performance email marketing platform built for precision delivery and real-time intelligence. Designed to run efficiently on shared hosting or dedicated servers, it combines a stunning modern UI with a powerful background engine.
 
 ---
 
-## 🛠️ Installation & Setup
+## 🌟 Key Features
 
-1. **Upload**: Upload all files to your PHP 7.4+ server.
-2. **Permissions**: Ensure the `/storage/` directory and its subfolders are writable (755 or 777).
-3. **Configure**: Log in with default credentials and go to **Settings** to enter your SMTP details.
-4. **Cron Job**: This is **REQUIRED** for sending and scheduling. Set up a cron job to run every 5 minutes:
-   ```bash
-   */5 * * * * php /path/to/your/folder/cron.php >/dev/null 2>&1
-   ```
+### 📡 Mission Control Dashboard (`logs.php`)
+*   **Real-Time Monitoring**: Live progress tracking of active campaigns.
+*   **Global Delivery Intelligence**: Consolidated stats (Pending, Sent, Failed) across all historical campaigns.
+*   **System Engine Monitor**: A terminal-style feed of the `cron.log` for full backend transparency.
+*   **Upcoming Queue**: Visibility into future scheduled campaigns.
+
+### 🧼 Automated Bounce Handling (`core/bounceHandler.php`)
+*   **IMAP Integration**: Connects to your inbox to detect undelivered messages.
+*   **Automatic Pruning**: Automatically marks failed addresses as "Bounced" to protect your sender reputation.
+*   **Rate-Limit Protection**: Smarter detection that ignores server-side "Max Defer" errors, protecting your valid contacts.
+*   **Manual Override**: One-click reactivation of contacts from the management panel.
+
+### 📊 Precision Analytics (`reports.php`)
+*   **Open Tracking**: Invisible pixel technology to monitor when emails are read.
+*   **Click Tracking**: Automatic link wrapping to measure engagement.
+*   **High-Density Reporting**: SVG-powered analytics cards for Sent, Opens, Clicks, and Bounces.
+*   **Historical Archive**: Permanent storage of campaign results for year-over-year comparison.
+
+### ⚙️ Delivery Engine (`cron.php`)
+*   **Status-Aware Sending**: Automatically skips "Bounced" or "Unsubscribed" contacts.
+*   **Hourly Limits**: Configurable caps to stay within shared hosting SMTP restrictions.
+*   **Smart Scheduling**: Plan your outreach in advance with time-accurate execution.
+*   **System Diagnostics**: One-click environment check (`check.php`) for server compatibility.
 
 ---
 
-## 📁 Directory Structure
-- `/assets/`: CSS, JS, and UI design tokens.
-- `/core/`: Authentication, mailer core, and shared configuration.
-- `/storage/`: All data files (Contacts, Settings, Campaigns).
-- `/storage/archive/`: Completed campaign reports.
-- `/storage/scheduled/`: Campaigns waiting for their time.
+## 🛠️ Technical Stack
+*   **Backend**: PHP 7.4+ (Standard library)
+*   **Frontend**: Vanilla HTML5 / JavaScript (ES6)
+*   **Design**: Modern Dark/Light Design System with Custom SVG Iconography.
+*   **Storage**: High-speed JSON flat-file storage (No SQL database required).
+*   **Tracking**: PHP-based Pixel & Link Redirection Engine.
 
 ---
 
-## 🔒 Security
-- **Auth Protection**: Every page is protected by a session-based login.
-- **Data Privacy**: Flat-file JSON storage keeps your data isolated and easy to back up.
-- **Bot Filtering**: Tracking logic automatically ignores common web crawlers to keep your stats clean.
+## 🚀 Quick Start
+
+1.  **Upload**: Move all files to your server (e.g., `/public_html/mail/`).
+2.  **Permissions**: Ensure the `/storage/` directory and its subfolders are writable (chmod 755 or 777).
+3.  **Configure**: Visit the **Settings** tab to enter your SMTP (Sending) and IMAP (Bounce) credentials.
+4.  **Automate**: Set up a Cron Job in your hosting panel (cPanel/DirectAdmin) to run every hour:
+    ```bash
+    php /home/your-user/public_html/mail/cron.php
+    ```
+5.  **Verify**: Click "Run System Diagnostics" in Settings to ensure all extensions are active.
 
 ---
 
-**Built with ❤️ for AstraMail Users.**
+## 🛡️ Security & Privacy
+*   **Token Protection**: All sensitive API actions are protected by a unique system secret.
+*   **Unsubscribe System**: Built-in compliant unsubscribe flow for audience management.
+*   **Transport Security**: Full support for SSL/TLS SMTP encryption.
+
+---
+*Created with ❤️ for professional marketers. AstraMail — Reach Beyond.*

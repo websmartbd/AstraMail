@@ -70,6 +70,10 @@ if ($action === 'save_settings') {
         'hourly_limit' => (int)($_POST['hourly_limit'] ?? 25),
         'timezone'   => trim($_POST['timezone'] ?? 'UTC'),
         'app_url'    => rtrim(trim($_POST['app_url'] ?? ''), '/') . '/',
+        'imap_host'     => trim($_POST['imap_host'] ?? ''),
+        'imap_port'     => (int)($_POST['imap_port'] ?? 993),
+        'imap_username' => trim($_POST['imap_username'] ?? ''),
+        'imap_password' => trim($_POST['imap_password'] ?? ''),
         '_secret'    => $secret // Persist the secret
     ];
     file_put_contents($SETTINGS_FILE, json_encode($new_settings, JSON_PRETTY_PRINT));
@@ -106,6 +110,19 @@ if ($action === 'edit_contact') {
 }
 
 // ── DELETE CONTACT ────────────────────────────────────────────────────────────
+if ($action === 'reactivate_contact') {
+    $index = (int)($_POST['index'] ?? -1);
+    if (isset($email_list[$index])) {
+        $email_list[$index]['status'] = 'active';
+        unset($email_list[$index]['bounced_at']);
+        file_put_contents($CONTACTS_FILE, json_encode($email_list, JSON_PRETTY_PRINT));
+        echo json_encode(['status' => 'success']);
+    } else {
+        echo json_encode(['status' => 'error']);
+    }
+    exit;
+}
+
 if ($action === 'delete_contact') {
     $index = (int)($_POST['index'] ?? -1);
     if ($index >= 0 && isset($email_list[$index])) {
@@ -138,6 +155,12 @@ if ($action === 'clear_system_log') {
     exit;
 }
 
+if ($action === 'sync_bounces') {
+    require_once __DIR__ . '/core/bounceHandler.php';
+    echo json_encode(['status' => 'success']);
+    exit;
+}
+
 // ── QUEUE (save campaign for cron to pick up) ─────────────────────────────────
 $subject  = trim($_POST['subject'] ?? '');
 $body_raw = trim($_POST['body']    ?? '');
@@ -149,20 +172,26 @@ if (!$subject || !$body_raw) {
     exit;
 }
 
+// Filter out bounced contacts from the very start
+$active_list = array_values(array_filter($email_list, function($c) {
+    return ($c['status'] ?? 'active') !== 'bounced';
+}));
+
 // Count recipients
 $total = 0;
 if ($target === 'all') {
-    $total = count($email_list);
+    $total = count($active_list);
 } else {
     $targets = explode(',', $target);
     foreach ($targets as $t) {
         $t = trim($t);
-        if (array_filter($email_list, fn($c) => $c['email'] === $t)) $total++;
+        if (array_filter($active_list, fn($c) => $c['email'] === $t)) $total++;
     }
-    if ($total === 0) {
-        echo json_encode(['status' => 'error', 'message' => 'No valid emails found.']);
-        exit;
-    }
+}
+
+if ($total === 0) {
+    echo json_encode(['status' => 'error', 'message' => 'No active recipients found.']);
+    exit;
 }
 
 $state = [
