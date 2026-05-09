@@ -86,7 +86,8 @@ $total = count($email_list);
               <td style="padding:9px 16px;text-align:right;">
                 <div style="display:inline-flex;gap:6px;">
                   <?php if ($status === 'bounced'): ?>
-                    <button onclick="reactivateContact(<?= $index ?>)" title="Reactivate"
+                    <button onclick="reactivateContact(this, <?= $index ?>)" 
+                      data-email="<?= htmlspecialchars($c['email']) ?>" title="Reactivate"
                       style="background:none;border:1px solid #10b981;padding:5px 8px;border-radius:6px;cursor:pointer;color:#10b981;">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 3l14 9-14 9V3z"/></svg>
                     </button>
@@ -98,7 +99,8 @@ $total = count($email_list);
                     style="background:none;border:1px solid #e2e8f0;padding:5px 8px;border-radius:6px;cursor:pointer;color:#475569;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                   </button>
-                  <button onclick="deleteContact(<?= $index ?>)" title="Delete"
+                  <button onclick="deleteContact(this, <?= $index ?>)" 
+                    data-email="<?= htmlspecialchars($c['email']) ?>" title="Delete"
                     style="background:none;border:1px solid #fecaca;padding:5px 8px;border-radius:6px;cursor:pointer;color:#ef4444;">
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   </button>

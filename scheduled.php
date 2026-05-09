@@ -1,9 +1,15 @@
 <?php
 $scheduled_dir = __DIR__ . '/storage/scheduled';
-if (!is_dir($scheduled_dir)) mkdir($scheduled_dir, 0777, true);
+if (!is_dir($scheduled_dir)) mkdir($scheduled_dir, 0755, true);
 
-if (isset($_GET['cancel'])) {
-    $file = $scheduled_dir . '/campaign_' . $_GET['cancel'] . '.json';
+// Bug 2 Fix: CSRF-protected POST cancel (was unprotected GET)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel'])) {
+    session_start();
+    if (($_POST['_token'] ?? '') !== session_id()) {
+        http_response_code(403); exit('Unauthorized');
+    }
+    $safe_cancel = preg_replace('/[^a-zA-Z0-9_]/', '', $_POST['cancel']);
+    $file = $scheduled_dir . '/campaign_' . $safe_cancel . '.json';
     if (file_exists($file)) unlink($file);
     header('Location: scheduled.php');
     exit;
@@ -22,8 +28,10 @@ usort($scheduled_campaigns, fn($a, $b) => ($a['scheduled_at'] ?? 0) <=> ($b['sch
 
 $view_item = null;
 if (isset($_GET['view'])) {
+    // Fix #3: Sanitize to prevent path traversal
+    $safe_view = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['view']);
     foreach ($scheduled_campaigns as $sc) {
-        if ($sc['campaign_id'] === $_GET['view']) { $view_item = $sc; break; }
+        if ($sc['campaign_id'] === $safe_view) { $view_item = $sc; break; }
     }
 }
 ?>
@@ -56,7 +64,7 @@ if (isset($_GET['view'])) {
         <div style="font-size:10px;font-weight:800;text-transform:uppercase;color:#94a3b8;letter-spacing:0.8px;margin-bottom:10px;">Email Content</div>
         <div style="font-size:14px;font-weight:700;color:#0f172a;margin-bottom:10px;"><?= htmlspecialchars($view_item['subject']) ?></div>
         <div style="padding:12px;background:#f8fafc;border-radius:8px;font-size:13px;color:#475569;max-height:300px;overflow-y:auto;border:1px solid #f1f5f9;line-height:1.6;">
-          <?= $view_item['body'] ?>
+          <?= htmlspecialchars($view_item['body']) ?>
         </div>
       </div>
       <!-- Meta -->
@@ -107,11 +115,19 @@ if (isset($_GET['view'])) {
                 <div style="font-size:11px;color:#94a3b8;"><?= date('H:i', $sc['scheduled_at']) ?></div>
               </td>
               <td style="padding:10px 16px;font-weight:700;color:#0f172a;"><?= $sc['total'] ?></td>
-              <td style="padding:10px 16px;text-align:right;">
-                <a href="?view=<?= $sc['campaign_id'] ?>"
+              <td style="padding:10px 16px;text-align:right;display:flex;gap:6px;justify-content:flex-end;align-items:center;">
+                <a href="?view=<?= htmlspecialchars($sc['campaign_id']) ?>"
                   style="display:inline-block;padding:5px 12px;border:1px solid #e2e8f0;border-radius:6px;font-size:11px;font-weight:700;color:#475569;text-decoration:none;">
                   View
                 </a>
+                <!-- Bug 2 Fix: CSRF-protected POST form instead of bare GET link -->
+                <form method="POST" style="display:inline;" onsubmit="return confirm('Cancel this scheduled campaign?')">
+                  <input type="hidden" name="_token" value="<?= session_id() ?>">
+                  <input type="hidden" name="cancel" value="<?= htmlspecialchars($sc['campaign_id']) ?>">
+                  <button type="submit" style="padding:5px 12px;border:1px solid #fecaca;border-radius:6px;font-size:11px;font-weight:700;color:#ef4444;background:none;cursor:pointer;">
+                    Cancel
+                  </button>
+                </form>
               </td>
             </tr>
           <?php endforeach; ?>

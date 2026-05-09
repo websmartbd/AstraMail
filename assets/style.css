@@ -277,3 +277,12 @@ textarea { min-height: 180px; }
 
 tr:hover td { background-color: #fdfdfd; }
 td { transition: background 0.2s; }
+
+/* ── Animations ── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin {
+  animation: spin 1s linear infinite;
+}

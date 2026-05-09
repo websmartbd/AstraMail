@@ -4,13 +4,14 @@ require_once __DIR__ . '/core/header.php';
 
 $state_file  = __DIR__ . '/storage/campaignState.json';
 $archive_dir = __DIR__ . '/storage/archive';
-if (!is_dir($archive_dir)) mkdir($archive_dir, 0777, true);
+if (!is_dir($archive_dir)) mkdir($archive_dir, 0755, true);
 
 $last_campaign = file_exists($state_file) ? json_decode(file_get_contents($state_file), true) : null;
 
 $view_report = null;
 if (isset($_GET['view_report'])) {
-  $cid = $_GET['view_report'];
+  // Fix #2: Sanitize to prevent path traversal (../../etc/passwd)
+  $cid = preg_replace('/[^a-zA-Z0-9_]/', '', $_GET['view_report']);
   $rf  = $archive_dir . '/campaign_' . $cid . '.json';
   if (file_exists($rf)) $view_report = json_decode(file_get_contents($rf), true);
   if ($last_campaign && ($last_campaign['campaign_id'] ?? '') === $cid) $view_report = $last_campaign;

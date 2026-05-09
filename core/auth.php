@@ -9,15 +9,63 @@ $brand_name = $smtp_config['from_name'] ?? 'BMS Mailer';
 // Set Global Timezone
 date_default_timezone_set($smtp_config['timezone'] ?? 'UTC');
 
+// Initialize auth state variables
+$auth_error    = false;
+$is_locked_out = false;
+
+// ── BRUTE-FORCE LOCKOUT ──────────────────────────────────────────────────────
+$fail_file = __DIR__ . '/../storage/.login_fails';
+$fail_data = file_exists($fail_file) ? json_decode(file_get_contents($fail_file), true) : ['count' => 0, 'last' => 0];
+$lockout_seconds = 900; // 15 minutes
+if (($fail_data['count'] ?? 0) >= 5 && (time() - ($fail_data['last'] ?? 0)) < $lockout_seconds) {
+    $wait = ceil(($lockout_seconds - (time() - $fail_data['last'])) / 60);
+    $auth_error = "Too many failed attempts. Please wait {$wait} minute(s) before trying again.";
+    $is_locked_out = true;
+} else {
+    if ((time() - ($fail_data['last'] ?? 0)) >= $lockout_seconds) {
+        $fail_data = ['count' => 0, 'last' => 0]; // Reset after cooldown
+    }
+    $is_locked_out = false;
+}
+
+// ── FIRST-RUN SETUP ──────────────────────────────────────────────────────────
+$needs_setup = empty($smtp_config['_password']);
+
+// Handle First-Run Password Setup
+if ($needs_setup && isset($_POST['setup_password'])) {
+    $new_pass = trim($_POST['setup_password']);
+    $confirm  = trim($_POST['confirm_password']);
+    if (strlen($new_pass) < 8) {
+        $auth_error = 'Password must be at least 8 characters.';
+    } elseif ($new_pass !== $confirm) {
+        $auth_error = 'Passwords do not match.';
+    } else {
+        $settings_file = __DIR__ . '/../storage/settings.json';
+        $stored = file_exists($settings_file) ? json_decode(file_get_contents($settings_file), true) : [];
+        $stored['_password'] = $new_pass;
+        file_put_contents($settings_file, json_encode($stored, JSON_PRETTY_PRINT));
+        session_regenerate_id(true);
+        $_SESSION['bms_auth'] = true;
+        header('Location: index.php'); exit;
+    }
+}
+
 // Handle Login
-$auth_error = false;
-if (isset($_POST['login_password'])) {
-    if ($_POST['login_password'] === ($smtp_config['_password'] ?? 'admin123')) {
+$auth_error = $auth_error ?: false;
+if (!$is_locked_out && !$needs_setup && isset($_POST['login_password'])) {
+    if ($_POST['login_password'] === ($smtp_config['_password'] ?? '')) {
+        // Success — reset lockout, regenerate session
+        file_put_contents($fail_file, json_encode(['count' => 0, 'last' => 0]));
+        session_regenerate_id(true);
         $_SESSION['bms_auth'] = true;
         header('Location: ' . $_SERVER['PHP_SELF']);
         exit;
     } else {
-        $auth_error = "Incorrect password. Please try again.";
+        $fail_data['count'] = ($fail_data['count'] ?? 0) + 1;
+        $fail_data['last']  = time();
+        file_put_contents($fail_file, json_encode($fail_data));
+        $remaining = max(0, 5 - $fail_data['count']);
+        $auth_error = "Incorrect password. {$remaining} attempt(s) remaining before lockout.";
     }
 }
 
@@ -103,23 +151,42 @@ if (!$is_authenticated) {
 
     <body>
         <div class="login-card">
-            <div class="login-logo">M</div>
-            <h1 class="login-title">Welcome Back</h1>
-            <p class="login-desc">Enter your password to access the dashboard.</p>
-
-            <?php if ($auth_error) { ?>
-                <div class="error-msg"><?= htmlspecialchars($auth_error) ?></div>
-            <?php } ?>
-
-            <form method="POST">
-                <div class="form-group" style="text-align: left;">
-                    <label>Password</label>
-                    <input type="password" name="login_password" placeholder="••••••••" required autofocus>
-                </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 10px;">Sign
-                    In</button>
-            </form>
+            <div class="login-logo">A</div>
+            <?php if ($needs_setup): ?>
+                <h1 class="login-title">Welcome to AstraMail</h1>
+                <p class="login-desc">Create a strong password to secure your dashboard.</p>
+                <?php if ($auth_error): ?>
+                    <div class="error-msg"><?= htmlspecialchars($auth_error) ?></div>
+                <?php endif; ?>
+                <form method="POST">
+                    <div class="form-group" style="text-align:left; margin-bottom:12px;">
+                        <label>New Password (min. 8 chars)</label>
+                        <input type="password" name="setup_password" placeholder="••••••••" required autofocus minlength="8">
+                    </div>
+                    <div class="form-group" style="text-align:left;">
+                        <label>Confirm Password</label>
+                        <input type="password" name="confirm_password" placeholder="••••••••" required minlength="8">
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%; height:48px; margin-top:10px;">Set Password & Enter</button>
+                </form>
+            <?php else: ?>
+                <h1 class="login-title">Welcome Back</h1>
+                <p class="login-desc">Enter your password to access the dashboard.</p>
+                <?php if ($auth_error): ?>
+                    <div class="error-msg"><?= htmlspecialchars($auth_error) ?></div>
+                <?php endif; ?>
+                <?php if (!$is_locked_out): ?>
+                <form method="POST">
+                    <div class="form-group" style="text-align: left;">
+                        <label>Password</label>
+                        <input type="password" name="login_password" placeholder="••••••••" required autofocus>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; height: 48px; margin-top: 10px;">Sign In</button>
+                </form>
+                <?php endif; ?>
+            <?php endif; ?>
         </div>
+
     </body>
 
     </html>

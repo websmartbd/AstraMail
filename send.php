@@ -1,6 +1,13 @@
 <?php
 header('Content-Type: application/json');
 
+// Disable error display to prevent warnings from breaking JSON responses
+error_reporting(0);
+ini_set('display_errors', 0);
+
+// Start output buffering to catch any accidental output
+ob_start();
+
 require_once __DIR__ . '/core/mailer.php';
 $SETTINGS_FILE = __DIR__ . '/storage/settings.json';
 $CONTACTS_FILE = __DIR__ . '/storage/contacts.json';
@@ -8,7 +15,7 @@ $STATE_FILE    = __DIR__ . '/storage/campaignState.json';
 
 $email_list = file_exists($CONTACTS_FILE) ? json_decode(file_get_contents($CONTACTS_FILE), true) : [];
 
-$secret     = $smtp_config['_secret'] ?? 'bms_mailer_2025';
+// _secret removed as we now use session_id() for API tokens
 
 // Set Global Timezone
 date_default_timezone_set($smtp_config['timezone'] ?? 'UTC');
@@ -16,7 +23,9 @@ date_default_timezone_set($smtp_config['timezone'] ?? 'UTC');
 session_start();
 $is_authenticated = isset($_SESSION['bms_auth']) && $_SESSION['bms_auth'] === true;
 
-if (!$is_authenticated && ($_POST['_token'] ?? '') !== $secret) {
+// ── AUTH: Session-bound token check (fixes hardcoded token vulnerability) ────────────────
+// Token is now the session ID, not a static string
+if (!$is_authenticated && ($_POST['_token'] ?? '') !== session_id()) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized Access. Please login.']);
     exit;
 }
@@ -74,8 +83,20 @@ if ($action === 'save_settings') {
         'imap_port'     => (int)($_POST['imap_port'] ?? 993),
         'imap_username' => trim($_POST['imap_username'] ?? ''),
         'imap_password' => trim($_POST['imap_password'] ?? ''),
-        '_secret'    => $secret // Persist the secret
+        // Bug 1 FIX: Preserve _password — never erase it on settings save
+        '_password'     => $smtp_config['_password'] ?? '',
     ];
+
+    // Low-priority fix: Validate timezone
+    if (!in_array($new_settings['timezone'], timezone_identifiers_list())) {
+        $new_settings['timezone'] = 'UTC';
+    }
+
+    // Low-priority fix: Validate encryption
+    if (!in_array($new_settings['encryption'], ['ssl', 'tls', 'starttls'])) {
+        $new_settings['encryption'] = 'ssl';
+    }
+
     file_put_contents($SETTINGS_FILE, json_encode($new_settings, JSON_PRETTY_PRINT));
     echo json_encode(['status' => 'success', 'message' => 'Settings updated.']);
     exit;
@@ -89,43 +110,62 @@ if ($action === 'add_contact') {
         echo json_encode(['status' => 'error', 'message' => 'Name and email required.']);
         exit;
     }
+    // Low-priority fix: Validate email format
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        echo json_encode(['status' => 'error', 'message' => 'Invalid email address format.']);
+        exit;
+    }
+    // Prevent duplicate emails
+    foreach ($email_list as $ex) {
+        if (strtolower($ex['email'] ?? '') === strtolower($email)) {
+            echo json_encode(['status' => 'error', 'message' => 'This email already exists in your list.']);
+            exit;
+        }
+    }
     $email_list[] = ['name' => $name, 'email' => $email];
     file_put_contents($CONTACTS_FILE, json_encode($email_list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
     echo json_encode(['status' => 'success', 'message' => 'Contact added.']);
     exit;
 }
 
-// ── EDIT CONTACT ──────────────────────────────────────────────────────────────
+// ── EDIT CONTACT ───────────────────────────────────────────────────────────────────────
 if ($action === 'edit_contact') {
-    $index = (int)($_POST['index'] ?? -1);
-    $name  = trim($_POST['name'] ?? '');
-    $email = trim($_POST['email'] ?? '');
-    if ($index >= 0 && isset($email_list[$index])) {
-        $email_list[$index] = ['name' => $name, 'email' => $email];
+    $index      = (int)($_POST['index'] ?? -1);
+    $old_email  = trim($_POST['old_email'] ?? ''); // Verify identity before mutating
+    $name       = trim($_POST['name'] ?? '');
+    $email      = trim($_POST['email'] ?? '');
+    // Fix #4: Require old_email to match to prevent index tampering
+    if ($index >= 0 && isset($email_list[$index]) && $email_list[$index]['email'] === $old_email) {
+        $email_list[$index]['name']  = $name;
+        $email_list[$index]['email'] = $email;
         file_put_contents($CONTACTS_FILE, json_encode($email_list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         echo json_encode(['status' => 'success']);
         exit;
     }
-    echo json_encode(['status' => 'error']); exit;
+    echo json_encode(['status' => 'error', 'message' => 'Contact not found or identity mismatch.']); exit;
 }
 
 // ── DELETE CONTACT ────────────────────────────────────────────────────────────
 if ($action === 'reactivate_contact') {
-    $index = (int)($_POST['index'] ?? -1);
-    if (isset($email_list[$index])) {
+    $index     = (int)($_POST['index'] ?? -1);
+    $old_email = trim($_POST['old_email'] ?? '');
+    // Fix #4: Verify email matches before reactivating
+    if ($index >= 0 && isset($email_list[$index]) && $email_list[$index]['email'] === $old_email) {
         $email_list[$index]['status'] = 'active';
         unset($email_list[$index]['bounced_at']);
         file_put_contents($CONTACTS_FILE, json_encode($email_list, JSON_PRETTY_PRINT));
         echo json_encode(['status' => 'success']);
     } else {
-        echo json_encode(['status' => 'error']);
+        echo json_encode(['status' => 'error', 'message' => 'Contact not found or identity mismatch.']);
     }
     exit;
 }
 
 if ($action === 'delete_contact') {
-    $index = (int)($_POST['index'] ?? -1);
-    if ($index >= 0 && isset($email_list[$index])) {
+    $index     = (int)($_POST['index'] ?? -1);
+    $old_email = trim($_POST['old_email'] ?? '');
+    // Fix #4: Verify email matches before deleting
+    if ($index >= 0 && isset($email_list[$index]) && $email_list[$index]['email'] === $old_email) {
         array_splice($email_list, $index, 1);
         file_put_contents($CONTACTS_FILE, json_encode($email_list, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
         echo json_encode(['status' => 'success']);
@@ -156,8 +196,15 @@ if ($action === 'clear_system_log') {
 }
 
 if ($action === 'sync_bounces') {
-    require_once __DIR__ . '/core/bounceHandler.php';
-    echo json_encode(['status' => 'success']);
+    // Increase time limit for IMAP operations
+    @set_time_limit(300); 
+    
+    // Define a constant to prevent early exit in bounceHandler.php
+    define('BOUNCE_LIB', true);
+    $result = require_once __DIR__ . '/core/bounceHandler.php';
+    
+    ob_clean();
+    echo json_encode(['status' => 'success', 'message' => 'Sync complete.']);
     exit;
 }
 
@@ -213,7 +260,7 @@ $state = [
 
 if ($schedule) {
     $scheduled_dir = __DIR__ . '/storage/scheduled';
-    if (!is_dir($scheduled_dir)) mkdir($scheduled_dir, 0777, true);
+    if (!is_dir($scheduled_dir)) mkdir($scheduled_dir, 0755, true);
     $path = $scheduled_dir . '/campaign_' . $state['campaign_id'] . '.json';
     file_put_contents($path, json_encode($state, JSON_PRETTY_PRINT));
     

@@ -14,8 +14,7 @@ function get_mailer_config() {
         'encryption' => 'ssl',
         'from_email' => 'your-email',
         'from_name'  => 'AstraMail',
-        '_secret'    => 'bms_mailer_2026', // API Token
-        '_password'  => '1234567'         // Dashboard Password
+        '_password'  => ''                  // Empty = force first-run setup
     ];
 
     $stored = file_exists($settings_file) ? json_decode(file_get_contents($settings_file), true) : [];

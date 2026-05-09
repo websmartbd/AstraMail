@@ -7,6 +7,12 @@
  * Safe for shared hosting with 30 email/hour limits.
  */
 
+// Bug 4 Fix: Block direct HTTP access — CLI only
+if (php_sapi_name() !== 'cli') {
+    http_response_code(403);
+    exit('Forbidden: cron.php can only be run from the command line.');
+}
+
 require_once __DIR__ . '/core/mailer.php';
 $SETTINGS_FILE = __DIR__ . '/storage/settings.json';
 $CONTACTS_FILE = __DIR__ . '/storage/contacts.json';
@@ -30,6 +36,12 @@ if (time() - $last_reset > (7 * 24 * 60 * 60)) {
     file_put_contents($RESET_FILE, time());
 }
 // ──────────────────────────────────────────────────────────────────────────────
+
+// ─── BOUNCE CLEANUP (Always run) ──────────────────────────────────────────
+// Check the inbox for bounces to clean up contacts for future campaigns
+// We define BOUNCE_LIB to prevent the handler from exiting the whole script if IMAP is missing
+if (!defined('BOUNCE_LIB')) define('BOUNCE_LIB', true);
+require_once __DIR__ . '/core/bounceHandler.php';
 
 function clog($msg)
 {
@@ -235,7 +247,3 @@ $state['updated_at'] = date('c');
 file_put_contents($STATE_FILE, json_encode($state, JSON_PRETTY_PRINT));
 
 clog("=== Run complete. Sent: $sent_this_run, Failed: $fail_this_run, Progress: {$new_offset}/{$total}, Status: {$state['status']} ===");
-
-// ─── POST-DELIVERY CLEANUP ──────────────────────────────────────────────────
-// Now that sending is done, check the inbox for bounces to clean up for next time
-require_once __DIR__ . '/core/bounceHandler.php';

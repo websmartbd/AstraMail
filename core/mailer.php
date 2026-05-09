@@ -36,22 +36,43 @@ function _send_smtp_core($to, $subject, $message, $headers = '') {
     $fromName  = $smtp_config['from_name'];
     $fromEmail = $smtp_config['from_email'];
     if (empty($headers)) {
+        $app_url = $smtp_config['app_url'] ?? '';
+        $unsub_url = $app_url . 'unsubscribe.php?email=' . urlencode($to) . '&token=' . base64_encode($to);
+        
         $headers  = "From: $fromName <$fromEmail>\r\n";
         $headers .= "Reply-To: <$fromEmail>\r\n";
         $headers .= "MIME-Version: 1.0\r\n";
         $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
         $headers .= "Content-Transfer-Encoding: 8bit\r\n";
+        $headers .= "List-Unsubscribe: <$unsub_url>\r\n";
+        $headers .= "Precedence: bulk\r\n";
+        $headers .= "X-Mailer: AstraMail/2025\r\n";
+        $headers .= "Message-ID: <" . md5(uniqid(microtime())) . "@" . parse_url($app_url, PHP_URL_HOST) . ">\r\n";
+
+        // Append unsubscribe link to body
+        $unsub_footer = "<br><br><hr><div style='font-size:12px;color:#64748b;text-align:center;'>";
+        $unsub_footer .= "Sent by $fromName. If you no longer wish to receive these emails, you can ";
+        $unsub_footer .= "<a href='$unsub_url' style='color:#2563eb;text-decoration:underline;'>unsubscribe here</a>.";
+        $unsub_footer .= "</div>";
+        
+        $message .= $unsub_footer;
     }
     $timeout = 25;
     $smtp = @stream_socket_client(
         "ssl://{$smtp_config['host']}:{$smtp_config['port']}",
         $errno, $errstr, $timeout,
         STREAM_CLIENT_CONNECT,
-        stream_context_create(['ssl' => [
-            'verify_peer' => false,
-            'verify_peer_name' => false,
-            'allow_self_signed' => true
-        ]])
+        stream_context_create(['ssl' => array_merge([
+            // Fix #7: Enable SSL verification to prevent MITM attacks
+            'verify_peer'      => true,
+            'verify_peer_name' => true,
+            'allow_self_signed' => false,
+        ], (function() {
+            // Try common CA bundle paths (works on Linux/cPanel servers)
+            $paths = ['/etc/ssl/certs/ca-certificates.crt', '/etc/pki/tls/certs/ca-bundle.crt'];
+            foreach ($paths as $p) if (file_exists($p)) return ['cafile' => $p];
+            return []; // No cafile found, let PHP use system default or fail gracefully
+        })() ) ] )
     );
     if (!$smtp) return "Connection Failed: $errstr ($errno)";
     stream_set_timeout($smtp, $timeout);

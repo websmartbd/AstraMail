@@ -10,6 +10,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
     rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
+  <script>
+    // Security: token is session-bound — regenerates on every new login
+    const API_TOKEN = '<?= session_id() ?>';
+  </script>
 </head>
 
 <body>

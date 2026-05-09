@@ -109,7 +109,7 @@ async function syncBounces() {
   btn.disabled = true;
 
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'sync_bounces');
 
   try {
@@ -262,7 +262,7 @@ async function sendEmails() {
   if (!(await niceConfirm('Confirm Launch', confirmMsg))) return;
 
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'queue');
   form.append('name', document.getElementById('campaign_name').value.trim() || subject);
   form.append('subject', subject);
@@ -301,7 +301,7 @@ function startPolling() {
 
 async function pollStatus() {
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'status');
   try {
     const res = await fetch('send.php', { method: 'POST', body: form });
@@ -317,7 +317,7 @@ async function pollStatus() {
 
 async function fetchSystemLog() {
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'get_system_log');
   try {
     const res = await fetch('send.php', { method: 'POST', body: form });
@@ -333,7 +333,7 @@ async function fetchSystemLog() {
 async function clearSystemLog() {
   if (!(await niceConfirm('Clear System Log', 'Are you sure you want to empty the activity log?'))) return;
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'clear_system_log');
   await fetch('send.php', { method: 'POST', body: form });
   fetchSystemLog();
@@ -435,7 +435,7 @@ function renderStatus(data) {
 async function resetCampaign() {
     if (!(await niceConfirm('Reset Dashboard', 'This will hide the current status from the dashboard. The report will still be available in the Reports tab. Continue?'))) return;
     const form = new FormData();
-    form.append('_token', 'bms_mailer_2025');
+    form.append('_token', API_TOKEN);
     form.append('action', 'reset');
     await fetch('send.php', { method: 'POST', body: form });
     location.reload();
@@ -446,7 +446,7 @@ async function addContact() {
   const email = document.getElementById('newContactEmail').value.trim();
   if (!name || !email) return;
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'add_contact');
   form.append('name', name);
   form.append('email', email);
@@ -482,9 +482,10 @@ async function editContact(el, index) {
     if (!newName || !newEmail) return niceAlert('Error', 'Both name and email are required.');
 
     const form = new FormData();
-    form.append('_token', 'bms_mailer_2025');
+    form.append('_token', API_TOKEN);
     form.append('action', 'edit_contact');
     form.append('index', index);
+    form.append('old_email', oldEmail); // Fix #4: Identity verification
     form.append('name', newName);
     form.append('email', newEmail);
     
@@ -497,22 +498,26 @@ async function editContact(el, index) {
     }
 }
 
-async function reactivateContact(index) {
+async function reactivateContact(el, index) {
+  const old_email = el.dataset.email; // Fix #4: Pass email for server-side verification
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'reactivate_contact');
   form.append('index', index);
+  form.append('old_email', old_email);
 
   await fetch('send.php', { method: 'POST', body: form });
   window.location.reload();
 }
 
-async function deleteContact(index) {
+async function deleteContact(el, index) {
     if (!(await niceConfirm('Delete Contact', 'Are you sure you want to remove this contact?'))) return;
+    const old_email = el.dataset.email; // Fix #4: Pass email for server-side verification
     const form = new FormData();
-    form.append('_token', 'bms_mailer_2025');
+    form.append('_token', API_TOKEN);
     form.append('action', 'delete_contact');
     form.append('index', index);
+    form.append('old_email', old_email);
     
     const res = await fetch('send.php', { method: 'POST', body: form });
     const data = await res.json();
@@ -537,7 +542,7 @@ function filterContacts() {
 
 async function saveSettings() {
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'save_settings');
   form.append('host', document.getElementById('smtp_host').value);
   form.append('port', document.getElementById('smtp_port').value);
@@ -564,10 +569,39 @@ async function saveSettings() {
   }
 }
 
+async function syncBounces() {
+  const btn = document.getElementById('syncBtn');
+  const originalHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 12c0-4.4 3.6-8 8-8 3.3 0 6.2 2 7.4 4.9M22 12c0 4.4-3.6 8-8 8-3.3 0-6.2-2-7.4-4.9"/></svg> Syncing...';
+
+  const form = new FormData();
+  form.append('_token', API_TOKEN);
+  form.append('action', 'sync_bounces');
+
+  try {
+    const res = await fetch('send.php', { method: 'POST', body: form });
+    if (!res.ok) throw new Error('Server returned ' + res.status);
+    
+    const data = await res.json();
+    if (data.status === 'success') {
+      location.reload();
+    } else {
+      niceAlert('Sync Error', data.message || 'The IMAP server could not be reached.');
+    }
+  } catch (e) {
+    console.error(e);
+    niceAlert('Error', 'The request timed out or the server is busy. Please try again in a moment.');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalHtml;
+  }
+}
+
 async function cancelCampaign() {
   if (!confirm('Cancel?')) return;
   const form = new FormData();
-  form.append('_token', 'bms_mailer_2025');
+  form.append('_token', API_TOKEN);
   form.append('action', 'cancel');
   await fetch('send.php', { method: 'POST', body: form });
   location.reload();
@@ -575,7 +609,7 @@ async function cancelCampaign() {
 
 function initApp() {
     const form = new FormData();
-    form.append('_token', 'bms_mailer_2025');
+    form.append('_token', API_TOKEN);
     form.append('action', 'status');
     fetch('send.php', { method: 'POST', body: form })
     .then(res => res.json())
